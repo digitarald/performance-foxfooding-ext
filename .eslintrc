@@ -1,0 +1,23 @@
+{
+    "globals": {
+        "browser": true,
+        "chrome": true,
+    },
+    "rules": {
+        "no-set-state": "off",
+        "no-console": "off",
+        "no-unused-vars": "off",
+        "no-case-declarations": "off"
+    },
+    "env": {
+        "browser": true,
+        "es6": true,
+        "node": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 2017
+    },
+    "extends": [
+      "eslint:recommended"
+    ]
+}

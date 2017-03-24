@@ -1,0 +1,25 @@
+{
+  "title": "Personal Performance Beacon",
+  "name": "personal-performance-beacon",
+  "description": "Crowd-sourced Firefox Profiling.",
+  "author": "Quantum Flow <quantum-flow@mozilla.org>",
+  "version": "0.0.2",
+  "main": "./main.js",
+  "engines": {
+    "firefox": ">=53.0"
+  },
+  "permissions": {
+    "multiprocess": true
+  },
+  "hasEmbeddedWebExtension": true,
+  "license": "MPL",
+  "preferences": [
+    {
+      "name": "reportUrl",
+      "title": "Reporter URL",
+      "description": "Collected profiles get posted to this URL",
+      "type": "string",
+      "value": "https://profile-analyzer.firebaseapp.com/"
+    }
+  ]
+}
