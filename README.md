@@ -1,6 +1,6 @@
 # Personal Performance Beacon: Addon
 
-Crowd-sourced Firefox profiling.
+Crowd-sourced Firefox profiling. **[Install Firefox Addon](https://github.com/digitarald/ppb-addon/releases)**.
 
 See [Server](https://github.com/digitarald/ppb-server).
 
