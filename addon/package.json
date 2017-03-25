@@ -3,7 +3,9 @@
   "name": "personal-performance-beacon",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.3",
+  "repository": "digitarald/ppb-addon",
+  "updateLink": "https://raw.githubusercontent.com/digitarald/ppb-addon/master/personal_performance_beacon.xpi",
+  "version": "0.0.4",
   "main": "./main.js",
   "engines": {
     "firefox": ">=53.0"
