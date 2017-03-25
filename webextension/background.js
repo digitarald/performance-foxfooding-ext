@@ -13,7 +13,7 @@ const SERVER_URL = 'https://quantum-ppb.herokuapp.com';
 const PROFILE_SETTINGS = {
   entries: 10000000, // 60sec, per testing
   interval: 2,
-  features: ['stackwalk', 'threads', 'leaf', 'js'],
+  features: ['stackwalk', 'threads', 'leaf'],
   threads: ['GeckoMain', 'Compositor']
 };
 const SAMPLE_INTERVAL = 15 * 60 * 1000;
