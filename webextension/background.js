@@ -33,6 +33,7 @@ const beacons = [];
 
 // get uid for user
 const bootstrapUid = async () => {
+  console.log('bootstrapUid');
   browserAction.disable();
   const items = await storage.local.get('uid');
   if (items.uid) {
@@ -135,10 +136,8 @@ const uploadNext = async (beacon) => {
   const inputSize = input.length;
   const compressed = pako.gzip(input);
   const compressedSize = compressed.length;
-  console.log(`Compressed by ${Math.round(inputSize / compressedSize)}x`);
+  console.log(`Compressed ${signed.key} by ${Math.round(inputSize / compressedSize)}x`);
   const blob = new Blob([compressed], { type : 'application/json' });
-
-  console.log(`Uploading ${signed.key} to ${signed.url}`);
   const upload = await fetch(signed.url, {
     method: 'put',
     body: blob,
@@ -168,6 +167,7 @@ browserAction.onClicked.addListener(() => {
     } else {
       // Flush collected profiles
       beacons.length = 0;
+      lastSample = 0;
       browserAction.setTitle({title: 'Sampling disabled. Click to enable.'});
       browserAction.setIcon({path: './icons/icon-disabled.svg'});
     }

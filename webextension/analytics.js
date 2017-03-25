@@ -13,6 +13,7 @@ module.exports = class Analytics {
   }
 
   setClient(cid) {
+    console.log('Analytics client', cid);
     this.cid = cid;
   }
 

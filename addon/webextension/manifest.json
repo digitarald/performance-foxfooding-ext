@@ -10,7 +10,7 @@
     "https://www.google-analytics.com/"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["background-bundle.js"]
   },
   "browser_action": {
     "default_icon": "icons/icon-default.svg",
