@@ -1,34 +1,34 @@
-const Profiler = require('./profiler.js');
 const Analytics = require('./analytics.js');
 const pako = require('pako/dist/pako_deflate.js');
 
-const analytics = new Analytics('UA-96144575-1');
+const analytics = new Analytics('UA-49796218-57');
 
-const { runtime, browserAction, tabs, webNavigation, storage } = browser;
-
-const profiler = new Profiler(runtime.connect({name: 'profiler'}));
+const { runtime, geckoProfiler, browserAction, tabs, webNavigation, storage } = browser;
 
 // config
 const SERVER_URL = 'https://quantum-ppb.herokuapp.com';
 const PROFILE_SETTINGS = {
-  entries: 10000000, // 60sec, per testing
-  interval: 2,
-  features: ['stackwalk', 'threads', 'leaf'],
+  bufferSize: 5000000, // 60sec, per testing. TBD: Validate
+  interval: 4,
+  features: [
+    'stackwalk',
+    'leaf',
+    'threads',
+  ],
   threads: ['GeckoMain', 'Compositor']
 };
 const SAMPLE_INTERVAL = 15 * 60 * 1000;
 const SAMPLE_LENGTH_MAX = 60 * 1000;
-const ALWAYS_ON = true;
 
 // state
 let uid = null;
+let isRunning = false;
 let isUploading = false;
 let isEnabled = true;
 let canRecord = false;
 let sampleId = 0;
 let sampleStart = 0;
 let lastSample = 0;
-let stopProfiler = true;
 const beacons = [];
 
 // get uid for user
@@ -59,6 +59,10 @@ const bootstrapUid = async () => {
 
 bootstrapUid();
 
+geckoProfiler.onRunning.addListener((isRunning) => {
+  isRunning = true;
+});
+
 const profilePageLoad = async () => {
   if (!canRecord || !isEnabled) {
     return;
@@ -67,15 +71,10 @@ const profilePageLoad = async () => {
     return;
   }
   analytics.trackEvent('profile', 'start');
-  const status = await profiler.getStatus();
-  console.log('Profile status', status);
-  if (!status) {
-    profiler.start(PROFILE_SETTINGS);
-    stopProfiler = !ALWAYS_ON;
-  } else {
-    stopProfiler = false;
+  if (!isRunning) {
+    await geckoProfiler.start(PROFILE_SETTINGS);
   }
-  canRecord = false;
+  performance.mark('profiler.start');
   browserAction.setIcon({path: './icons/icon-running.svg'});
   sampleId = setTimeout(collectProfile, SAMPLE_LENGTH_MAX);
   sampleStart = Date.now();
@@ -89,19 +88,23 @@ const collectProfile = async () => {
   lastSample = Date.now();
   clearTimeout(sampleId);
   sampleId = 0;
+  performance.mark('profiler.collect');
+  performance.measure('profiler', 'profiler.start', 'profiler.collect');
   analytics.trackEvent('profile', 'collect');
   analytics.trackUserTiming('profile', 'sampling', Date.now() - sampleStart);
   sampleStart = 0;
   browserAction.setIcon({path: './icons/icon-default.svg'});
   browserAction.setBadgeText({text: 'Rec'});
   const start = Date.now();
-  const data = await profiler.getData();
-  if (stopProfiler) {
-    profiler.stop();
+  try {
+    await geckoProfiler.pause().catch((err) => console.error(err));
+    beacons.push(await geckoProfiler.getProfile());
+    await browser.geckoProfiler.resume().catch((err) => console.error(err));
+  } catch (e) {
+    analytics.trackException('getData failed');
   }
-  beacons.push(data);
-  canRecord = true;
   analytics.trackUserTiming('profile', 'get-data', Date.now() - start);
+  canRecord = true;
   browserAction.setBadgeText({text: ''});
   setTimeout(maybeUpload, 5000);
 }
@@ -174,14 +177,17 @@ browserAction.onClicked.addListener(() => {
   }
 });
 
-const urlFilter = {
-  url: [
-    { schemes: ['http', 'https'] }
-  ]
-};
+browser.tabs.onActivated.addListener((activeInfo) => {
+  profilePageLoad();
+});
 
-webNavigation.onBeforeNavigate.addListener((details) => {
-  if (!details.frameId) {
-    profilePageLoad();
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!tab.highlighted || tab.incognito || !tab.url.startsWith('http')) {
+    return;
   }
-}, urlFilter);
+  console.log(changeInfo);
+  if (changeInfo.status !== 'loading' && !changeInfo.url) {
+    return;
+  }
+  profilePageLoad();
+});

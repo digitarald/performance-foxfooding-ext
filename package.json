@@ -1,25 +1,27 @@
 {
-  "title": "Personal Performance Beacon Addon",
-  "name": "ppb-addon",
+  "title": "Performance Foxfooding Web Extension",
+  "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "config": {
+    "firefox": "nightly"
+  },
   "scripts": {
-    "test:lint": "eslint **/*.js",
-    "bundle:dev": "webpack",
-    "bundle:prod": "NODE_ENV=production webpack",
-    "start": "npm run bundle:dev && npm run start:browser",
-    "sign": "jpm sign --addon-dir addon --api-key $JWT_ISSUER --api-secret $JWT_SECRET",
-    "start:browser": "jpm run --addon-dir addon --binary /Applications/FirefoxNightly.app --profile ./.profile --no-copy",
-    "start:post": "npm run bundle:dev && jpm post --addon-dir addon --post-url http://127.0.0.1:8888",
-    "build": "npm run bundle:prod && npm run sign"
+    "start": "web-ext run --source-dir=dist --firefox=$npm_package_config_firefox --firefox-profile=./.profile --keep-profile-changes --browser-console",
+    "dev": "webpack --progress --colors --watch",
+    "sign": "npm run build && web-ext sign --source-dir=dist --api-key=$JWT_ISSUER --api-secret=$JWT_SECRET",
+    "build": "npm run clean && NODE_ENV=production webpack",
+    "clean": "rm -rf dist",
+    "lint": "eslint **/*.js"
   },
   "devDependencies": {
-    "eslint": "^3.18.0",
-    "jpm": "^1.3.0",
-    "webpack": "^2.2.1"
+    "copy-webpack-plugin": "^4.0.1",
+    "eslint": "^3.19.0",
+    "web-ext": "^1.8.1",
+    "webpack": "^2.5.1"
   },
   "dependencies": {
-    "pako": "^1.0.4"
+    "pako": "^1.0.5"
   }
 }

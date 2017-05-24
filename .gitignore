@@ -1,5 +1,6 @@
-*.xpi
 .profile
 node_modules
-**/*-bundle.js
+dist
 .env
+.web-extension-id
+web-ext-artifacts
