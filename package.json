@@ -3,14 +3,14 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "config": {
     "firefox": "nightly"
   },
   "scripts": {
     "start": "web-ext run --source-dir=dist --firefox=$npm_package_config_firefox --firefox-profile=./.profile --keep-profile-changes --browser-console",
     "dev": "webpack --progress --colors --watch",
-    "sign": "npm run build && web-ext sign --source-dir=dist --api-key=$JWT_ISSUER --api-secret=$JWT_SECRET",
+    "sign": "npm run build && web-ext sign --source-dir=dist --api-key=$JWT_ISSUER --api-secret=$JWT_SECRET && mv web-ext-artifacts/*.xpi performance_foxfooding.xpi",
     "build": "npm run clean && NODE_ENV=production webpack",
     "clean": "rm -rf dist",
     "lint": "eslint **/*.js"

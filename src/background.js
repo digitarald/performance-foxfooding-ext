@@ -6,7 +6,7 @@ const analytics = new Analytics('UA-49796218-57');
 const { runtime, geckoProfiler, browserAction, tabs, webNavigation, storage } = browser;
 
 // config
-const SERVER_URL = 'https://quantum-ppb.herokuapp.com';
+const SERVER_URL = 'https://performance-foxfooding.herokuapp.com';
 const PROFILE_SETTINGS = {
   bufferSize: 5000000, // 60sec, per testing. TBD: Validate
   interval: 4,

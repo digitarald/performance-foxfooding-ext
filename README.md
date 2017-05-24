@@ -1,8 +1,8 @@
-# Personal Performance Beacon: Addon
+# Performance Foxfooding: WebExtension
 
-Crowd-sourced Firefox profiling. **[Install Firefox Addon](https://raw.githubusercontent.com/digitarald/ppb-addon/master/personal_performance_beacon.xpi)** to start contributing.
+Crowd-sourced Firefox profiling. **[Install Firefox Web Extension](https://raw.githubusercontent.com/digitarald/performance-foxfooding-ext/master/performance_foxfooding.xpi)** to start contributing.
 
-See [Server](https://github.com/digitarald/ppb-server).
+See [Server](https://github.com/digitarald/performance-foxfooding-server).
 
 ## Personal Information
 

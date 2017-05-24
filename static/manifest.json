@@ -2,12 +2,12 @@
   "manifest_version": 2,
   "name": "Performance Foxfooding",
   "description": "Crowd-sourced Firefox Profiling WebExtension.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "permissions": [
     "geckoProfiler",
     "storage",
     "tabs",
-    "https://quantum-ppb.herokuapp.com/",
+    "https://performance-foxfooding.herokuapp.com/",
     "https://quantum-flow.s3.amazonaws.com/",
     "https://www.google-analytics.com/"
   ],
