@@ -9,7 +9,6 @@ module.exports = {
   uid: '',
 
   configure: async function(tid, storage) {
-    console.log('configure', this.tid);
     if (this.tid) {
       return;
     }
@@ -23,7 +22,6 @@ module.exports = {
   },
 
   send: function(type, params) {
-    console.log(`Analytics send ${type}: ${JSON.stringify(params)}`);
     Object.assign(params, {
       v: 1,
       tid: this.tid,
@@ -35,7 +33,6 @@ module.exports = {
     const query = Object.keys(params)
       .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
       .join('&');
-    // console.log(`analytics track: ${type}`, params);
     fetch('https://www.google-analytics.com/collect', {
       method: 'post',
       body: query
