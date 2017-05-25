@@ -1,56 +1,65 @@
+const shortid = require('shortid');
+
 const stringifyQuery = (params) => {
-  var esc = encodeURIComponent;
-  return Object.keys(params)
-    .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
-    .join('&');
+
 }
 
-module.exports = class Analytics {
+module.exports = {
+  tid: '',
+  uid: '',
 
-  constructor(tid) {
+  configure: async function(tid, storage) {
+    console.log('configure', this.tid);
+    if (this.tid) {
+      return;
+    }
     this.tid = tid;
-    this.cid = '0';
-  }
+    let { uid } = await storage.get('uid');
+    if (!uid) {
+      uid = shortid.generate();
+      storage.set({uid: uid});
+    }
+    this.uid = uid;
+  },
 
-  setClient(cid) {
-    console.log('Analytics client', cid);
-    this.cid = cid;
-  }
-
-  track(type, params) {
+  send: function(type, params) {
+    console.log(`Analytics send ${type}: ${JSON.stringify(params)}`);
     Object.assign(params, {
       v: 1,
       tid: this.tid,
-      cid: this.cid,
+      uid: this.uid,
       aip: 1,
       ds: 'addon',
       t: type
     });
+    const query = Object.keys(params)
+      .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+      .join('&');
     // console.log(`analytics track: ${type}`, params);
     fetch('https://www.google-analytics.com/collect', {
       method: 'post',
-      body: stringifyQuery(params)
+      body: query
     });
-  }
+  },
 
-  trackEvent(category, action, label = '', value = '') {
-    this.track('event', {
+  trackEvent: function(category, action, label = '', value = '') {
+    this.send('event', {
       ec: category,
       ea: action,
       el: label,
       ev: value
     });
-  }
+  },
 
-  trackException(description, fatal = false) {
-    this.track('exception', {
+  trackException: function(description, fatal = false) {
+    this.send('exception', {
       exd: description,
       exf: fatal ? 1 : 0
     });
-  }
+  },
 
-  trackUserTiming(category, variable, time = 0) {
-    this.track('timing', {
+  trackUserTiming: function(category, variable, time = 0) {
+    this.send('timing', {
       utc: category,
       utv: variable,
       utt: time

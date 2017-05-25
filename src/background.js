@@ -1,9 +1,7 @@
-const Analytics = require('./analytics.js');
+const analytics = require('./analytics.js');
 const pako = require('pako/dist/pako_deflate.js');
-
-const analytics = new Analytics('UA-49796218-57');
-
 const { runtime, geckoProfiler, browserAction, tabs, webNavigation, storage } = browser;
+
 
 // config
 const SERVER_URL = 'https://performance-foxfooding.herokuapp.com';
@@ -33,12 +31,11 @@ const beacons = [];
 
 // get uid for user
 const bootstrapUid = async () => {
-  console.log('bootstrapUid');
+  await analytics.configure('UA-49796218-57', storage.local);
   browserAction.disable();
   const items = await storage.local.get('uid');
   if (items.uid) {
     uid = items.uid;
-    analytics.setClient(uid);
     analytics.trackEvent('bootstrap', 'storage');
   } else {
     const resp = await (
@@ -48,10 +45,9 @@ const bootstrapUid = async () => {
     ).json();
     uid = resp.uid;
     await storage.local.set({uid: uid});
-    analytics.setClient(uid);
     analytics.trackEvent('bootstrap', 'register');
   }
-  console.log(`Logged in as ${uid}`);
+  console.log(`Reporting as ${uid}`);
   browserAction.enable();
   browserAction.setTitle({title: `Registered as ${uid}`});
   canRecord = true;
@@ -71,13 +67,13 @@ const profilePageLoad = async () => {
     return;
   }
   analytics.trackEvent('profile', 'start');
+  sampleId = setTimeout(collectProfile, SAMPLE_LENGTH_MAX);
+  sampleStart = Date.now();
+  browserAction.setIcon({path: './icons/icon-running.svg'});
   if (!isRunning) {
     await geckoProfiler.start(PROFILE_SETTINGS);
   }
   performance.mark('profiler.start');
-  browserAction.setIcon({path: './icons/icon-running.svg'});
-  sampleId = setTimeout(collectProfile, SAMPLE_LENGTH_MAX);
-  sampleStart = Date.now();
 }
 
 const collectProfile = async () => {
@@ -185,7 +181,6 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!tab.highlighted || tab.incognito || !tab.url.startsWith('http')) {
     return;
   }
-  console.log(changeInfo);
   if (changeInfo.status !== 'loading' && !changeInfo.url) {
     return;
   }

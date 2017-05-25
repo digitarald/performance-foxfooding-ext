@@ -3,10 +3,11 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "config": {
     "firefox": "nightly"
   },
+  "license": "MPL-2.0",
   "scripts": {
     "start": "web-ext run --source-dir=dist --firefox=$npm_package_config_firefox --firefox-profile=./.profile --keep-profile-changes --browser-console",
     "dev": "webpack --progress --colors --watch",
@@ -22,6 +23,7 @@
     "webpack": "^2.5.1"
   },
   "dependencies": {
-    "pako": "^1.0.5"
+    "pako": "^1.0.5",
+    "shortid": "^2.2.8"
   }
 }
