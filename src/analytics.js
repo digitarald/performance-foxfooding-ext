@@ -27,8 +27,10 @@ module.exports = {
       t: type,
     });
     const query = Object.keys(params)
+      .filter(k => params[k] != null && params[k] != '')
       .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
       .join('&');
+    console.log(query);
     fetch('https://www.google-analytics.com/collect', {
       method: 'post',
       body: query,

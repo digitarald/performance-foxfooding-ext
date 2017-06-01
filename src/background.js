@@ -178,6 +178,7 @@ browserAction.onClicked.addListener(() => {
   } else {
     isEnabled = !isEnabled;
     if (isEnabled) {
+      analytics.trackEvent('status', 'enable');
       notifications.create(noteId, {
         type: 'basic',
         iconUrl: extension.getURL('icons/icon-running.svg'),
@@ -187,6 +188,7 @@ browserAction.onClicked.addListener(() => {
       browserAction.setIcon({ path: './icons/icon-default.svg' });
       browserAction.setTitle({ title: 'Click to disable sampling.' });
     } else {
+      analytics.trackEvent('status', 'disable');
       // Flush collected profiles
       notifications.create(noteId, {
         type: 'basic',
