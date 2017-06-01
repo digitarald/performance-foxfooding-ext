@@ -3,7 +3,7 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "config": {
     "firefox": "nightly"
   },

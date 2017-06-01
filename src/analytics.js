@@ -1,9 +1,5 @@
 const shortid = require('shortid');
 
-const stringifyQuery = (params) => {
-
-}
-
 module.exports = {
   tid: '',
   uid: '',
@@ -16,7 +12,7 @@ module.exports = {
     let { uid } = await storage.get('uid');
     if (!uid) {
       uid = shortid.generate();
-      storage.set({uid: uid});
+      storage.set({ uid: uid });
     }
     this.uid = uid;
   },
@@ -28,14 +24,14 @@ module.exports = {
       uid: this.uid,
       aip: 1,
       ds: 'addon',
-      t: type
+      t: type,
     });
     const query = Object.keys(params)
       .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
       .join('&');
     fetch('https://www.google-analytics.com/collect', {
       method: 'post',
-      body: query
+      body: query,
     });
   },
 
@@ -44,14 +40,14 @@ module.exports = {
       ec: category,
       ea: action,
       el: label,
-      ev: value
+      ev: value,
     });
   },
 
   trackException: function(description, fatal = false) {
     this.send('exception', {
       exd: description,
-      exf: fatal ? 1 : 0
+      exf: fatal ? 1 : 0,
     });
   },
 
@@ -59,7 +55,7 @@ module.exports = {
     this.send('timing', {
       utc: category,
       utv: variable,
-      utt: time
+      utt: time,
     });
-  }
-}
+  },
+};
