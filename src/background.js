@@ -21,7 +21,7 @@ const profileSettings = {
   features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
-const sampleInterval = 60 * 1000;
+const sampleInterval = 15 * 60 * 1000;
 const sampleLength = 60 * 1000;
 const uploadDelay = 15000;
 
