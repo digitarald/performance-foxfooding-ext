@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Performance Foxfooding",
   "description": "Crowd-sourced Firefox Profiling WebExtension.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "permissions": [
     "geckoProfiler",
     "storage",
@@ -23,8 +23,8 @@
     }
 },
   "browser_action": {
-    "default_icon": "icons/icon-default.svg",
-    "default_title": "Performance Foxfooding",
+    "default_icon": "icons/icon-disabled.svg",
+    "default_title": "Ready. Set. Foxfood!",
     "browser_style": false
   }
 }

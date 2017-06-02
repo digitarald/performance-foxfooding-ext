@@ -12,6 +12,7 @@ const {
 } = browser;
 
 // config
+const logLabel = '[foxfooding]';
 const apiEndpoint = 'https://performance-foxfooding.herokuapp.com';
 const analyticsId = 'UA-49796218-57';
 const profileSettings = {
@@ -28,7 +29,7 @@ const uploadTimeout = 5000;
 let uid = null;
 let isRunning = false;
 let isUploading = false;
-let isEnabled = true;
+let isEnabled = false;
 let canRecord = false;
 let sampleId = 0;
 let sampleStart = 0;
@@ -36,7 +37,7 @@ let lastSample = 0;
 const beacons = [];
 
 // get uid for user
-const bootstrapUid = async () => {
+const bootstrap = async () => {
   await analytics.configure(analyticsId, storage.local);
   browserAction.disable();
   const items = await storage.local.get('uid');
@@ -51,38 +52,41 @@ const bootstrapUid = async () => {
     await storage.local.set({ uid: uid });
     analytics.trackEvent('bootstrap', 'register');
   }
-  console.log(`Reporting as ${uid}`);
+  console.log(logLabel, `Foxfooding as ${uid}`);
   browserAction.enable();
-  browserAction.setTitle({ title: `Registered as ${uid}` });
-  canRecord = true;
+  resetBadge();
+  const { autoStart } = await storage.local.get('autoStart');
+  if (autoStart !== false) {
+    enable();
+  }
 };
 
-bootstrapUid();
+bootstrap();
 
 geckoProfiler.onRunning.addListener(isRunning => {
   isRunning = true;
 });
 
-const profilePageLoad = async () => {
-  if (!canRecord || !isEnabled) {
+const startProfile = async () => {
+  if (!canRecord || !isEnabled || (lastSample && lastSample + sampleInterval > Date.now())) {
     return;
   }
-  if (lastSample && lastSample + sampleInterval > Date.now()) {
-    return;
-  }
+  canRecord = false;
   analytics.trackEvent('profile', 'start');
   sampleId = setTimeout(collectProfile, sampleLength);
   sampleStart = Date.now();
   browserAction.setIcon({ path: './icons/icon-running.svg' });
   if (!isRunning) {
     await geckoProfiler.start(profileSettings);
+    isRunning = true;
   }
+  console.log(logLabel, 'Sampling started');
   performance.mark('profiler.start');
 };
 
 const collectProfile = async () => {
-  if (!sampleId) {
-    console.log('Profiler not running');
+  if (!sampleId || !isEnabled) {
+    console.log(logLabel, 'Sampling not running');
     return;
   }
   lastSample = Date.now();
@@ -101,15 +105,15 @@ const collectProfile = async () => {
     resetBadge();
   }, 15000);
   try {
-    await geckoProfiler.pause().catch(err => console.error(err));
+    await geckoProfiler.pause().catch(err => console.error(logLabel, err));
     beacons.push(await geckoProfiler.getProfile());
-    await browser.geckoProfiler.resume().catch(err => console.error(err));
+    await browser.geckoProfiler.resume().catch(err => console.error(logLabel, err));
   } catch (e) {
     analytics.trackException('getData failed');
   }
   clearTimeout(getDataTimeout);
   const collectTime = Date.now() - start;
-  console.log('Profile data read out in %d ms', collectTime);
+  console.log(logLabel, `Profile data read out in ${collectTime}ms`);
   analytics.trackUserTiming('profile', 'get-data', collectTime);
   setTimeout(maybeUpload, uploadTimeout);
   resetBadge();
@@ -130,10 +134,11 @@ const maybeUpload = async () => {
       analytics.trackEvent('profile', 'upload');
       const start = Date.now();
       await uploadNext(beacons[0]);
+      beacons.splice(0, 1);
       analytics.trackUserTiming('profile', 'upload', Date.now() - start);
     } catch (err) {
       analytics.trackException('Upload failed');
-      console.error(`Upload failed with ${err}`);
+      console.error(logLabel, `Upload failed: ${err}`);
     }
   }
   isUploading = false;
@@ -146,12 +151,16 @@ const uploadNext = async beacon => {
   })).json();
   const input = JSON.stringify(beacon);
   const inputSize = input.length;
+  console.time(`${logLabel} gzip`);
   const compressed = pako.gzip(input);
   const compressedSize = compressed.length;
   console.log(
-    `Compressed ${signed.key} by ${Math.round(inputSize / compressedSize)}x: ${Math.round(compressedSize / 1024)} kb`
+    logLabel,
+    `Compressed ${signed.key} by ${Math.round(inputSize / compressedSize)}x: ${Math.round(compressedSize / 1024)}kb`
   );
+  console.timeEnd(`${logLabel} gzip`);
   const blob = new Blob([compressed], { type: 'application/json' });
+  console.time(`${logLabel} upload`);
   const upload = await fetch(signed.url, {
     method: 'put',
     body: blob,
@@ -160,54 +169,83 @@ const uploadNext = async beacon => {
       'Content-Encoding': 'gzip',
     },
   });
+  console.timeEnd(`${logLabel} upload`);
   if (!upload.ok) {
     throw new Error((await upload.text()));
   }
-  console.log(`Uploaded ${signed.key}`);
-  beacons.splice(beacons.indexOf(beacon), 1);
+  console.log(logLabel, `Uploaded ${signed.key}`);
 };
 
 const noteId = 'status-notification';
+
+const enable = () => {
+  if (isEnabled) {
+    return;
+  }
+  isEnabled = true;
+  storage.local.set({ autoStart: true });
+  analytics.trackEvent('status', 'enable');
+  notifications.create(noteId, {
+    type: 'basic',
+    iconUrl: extension.getURL('icons/icon-default.svg'),
+    title: 'Foxfooding enabled',
+    message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength / 60000}min.`,
+  });
+  browserAction.setIcon({ path: './icons/icon-default.svg' });
+  browserAction.setTitle({ title: 'Click to disable foxfooding' });
+};
+
+const disable = () => {
+  if (!isEnabled) {
+    return;
+  }
+  isEnabled = false;
+  storage.local.set({ autoStart: false });
+  geckoProfiler.stop();
+  if (sampleId) {
+    sampleId = 0;
+    resetBadge();
+  }
+  // Reset sampling interval
+  lastSample = 0;
+  // Flush collected profiles
+  beacons.length = 0;
+  const body = ['When you are ready to continue foxfooding, click the button.'];
+  if (beacons.length > 2 || (beacons.length === 1 && !isUploading)) {
+    body.push(`${beacons.length} pending upload(s) got discarded.`);
+  }
+  notifications.create(noteId, {
+    type: 'basic',
+    iconUrl: extension.getURL('icons/icon-disabled.svg'),
+    title: 'Foxfooding paused',
+    message: body.join(' '),
+  });
+  browserAction.setTitle({ title: 'Foxfooding disabled. Click to enable.' });
+  browserAction.setIcon({ path: './icons/icon-disabled.svg' });
+  analytics.trackEvent('status', 'disable');
+};
 
 browserAction.onClicked.addListener(() => {
   if (!uid) {
     return;
   }
   if (sampleId) {
-    collectProfile();
+    return collectProfile();
+  }
+  if (isEnabled) {
+    disable();
   } else {
-    isEnabled = !isEnabled;
-    if (isEnabled) {
-      analytics.trackEvent('status', 'enable');
-      notifications.create(noteId, {
-        type: 'basic',
-        iconUrl: extension.getURL('icons/icon-running.svg'),
-        title: 'Foxfooding enabled',
-        message: `Performance will be recorded for ${sampleLength / 60000} min, every ${sampleInterval / 60000} min`,
-      });
-      browserAction.setIcon({ path: './icons/icon-default.svg' });
-      browserAction.setTitle({ title: 'Click to disable sampling.' });
-    } else {
-      analytics.trackEvent('status', 'disable');
-      // Flush collected profiles
-      notifications.create(noteId, {
-        type: 'basic',
-        iconUrl: extension.getURL('icons/icon-disabled.svg'),
-        title: 'Foxfooding disabled for this session',
-        message: beacons.length > 2 || (beacons.length === 1 && !isUploading)
-          ? `Cancelled ${beacons.length} pending profile uploads`
-          : 'Just click to enable foxfooding',
-      });
-      beacons.length = 0;
-      lastSample = 0;
-      browserAction.setTitle({ title: 'Sampling disabled. Click to enable.' });
-      browserAction.setIcon({ path: './icons/icon-disabled.svg' });
-    }
+    enable();
   }
 });
 
-browser.tabs.onActivated.addListener(() => {
-  profilePageLoad();
+browser.tabs.onActivated.addListener(async ({ tabId }) => {
+  const activeTab = await tabs.get(tabId);
+  if (activeTab && activeTab.incognito) {
+    disable();
+  } else {
+    startProfile();
+  }
 });
 
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -218,5 +256,5 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   ) {
     return;
   }
-  profilePageLoad();
+  startProfile();
 });
