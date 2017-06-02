@@ -16,25 +16,24 @@ const logLabel = '[foxfooding]';
 const apiEndpoint = 'https://performance-foxfooding.herokuapp.com';
 const analyticsId = 'UA-49796218-57';
 const profileSettings = {
-  bufferSize: 5000000, // 60sec, per testing. TBD: Validate
-  interval: 4,
+  bufferSize: Math.pow(10, 7),
+  interval: 2,
   features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
-const sampleInterval = 15 * 60 * 1000;
+const sampleInterval = 60 * 1000;
 const sampleLength = 60 * 1000;
-const uploadTimeout = 5000;
+const uploadDelay = 15000;
 
 // state
 let uid = null;
-let isRunning = false;
 let isUploading = false;
 let isEnabled = false;
 let canRecord = false;
 let sampleId = 0;
 let sampleStart = 0;
 let lastSample = 0;
-const beacons = [];
+const uploadQueue = [];
 
 // get uid for user
 const bootstrap = async () => {
@@ -45,7 +44,7 @@ const bootstrap = async () => {
     uid = items.uid;
     analytics.trackEvent('bootstrap', 'storage');
   } else {
-    const resp = await (await fetch(`${apiEndpoint}/beacons/`, {
+    const resp = await (await fetch(`${apiEndpoint}/api/collect/`, {
       method: 'post',
     })).json();
     uid = resp.uid;
@@ -63,10 +62,6 @@ const bootstrap = async () => {
 
 bootstrap();
 
-geckoProfiler.onRunning.addListener(isRunning => {
-  isRunning = true;
-});
-
 const startProfile = async () => {
   if (!canRecord || !isEnabled || (lastSample && lastSample + sampleInterval > Date.now())) {
     return;
@@ -76,10 +71,9 @@ const startProfile = async () => {
   sampleId = setTimeout(collectProfile, sampleLength);
   sampleStart = Date.now();
   browserAction.setIcon({ path: './icons/icon-running.svg' });
-  if (!isRunning) {
-    await geckoProfiler.start(profileSettings);
-    isRunning = true;
-  }
+  await geckoProfiler
+    .start(profileSettings)
+    .catch(err => console.error(logLabel, 'Failed to start profiler', err));
   console.log(logLabel, 'Sampling started');
 };
 
@@ -96,25 +90,34 @@ const collectProfile = async () => {
   sampleStart = 0;
   browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setBadgeText({ text: 'Rec' });
-  const start = Date.now();
   const getDataTimeout = setTimeout(() => {
     analytics.trackEvent('profile', 'get-data-timeout');
     resetBadge();
   }, 30000);
   try {
-    await geckoProfiler.pause().catch(err => console.error(logLabel, err));
+    const start = Date.now();
+    await geckoProfiler
+      .pause()
+      .catch(err => console.error(logLabel, 'Failed to pause profiler', err));
     const data = await geckoProfiler.getProfile();
-    beacons.push(data);
-    await browser.geckoProfiler.resume().catch(err => console.error(logLabel, err));
+    const { samples } = data.threads.find(
+      thread => thread.name === 'GeckoMain' && thread.processType === 'default'
+    );
+    const profileDelta = samples.data.slice(-1)[0][1] - samples.data[0][1];
+    console.log(logLabel, 'Profiler length', profileDelta);
+    uploadQueue.push(data);
+    await browser.geckoProfiler
+      .resume()
+      .catch(err => console.error(logLabel, 'Failed to resume profiler', err));
+    const delta = Date.now() - start;
+    console.log(logLabel, `Profile data read out in ${delta}ms`);
+    analytics.trackUserTiming('profile', 'get-data', delta);
   } catch (err) {
-    console.error(logLabel, err);
+    console.error(logLabel, 'Failed to get profile', err);
     analytics.trackException('getData failed');
   }
   clearTimeout(getDataTimeout);
-  const collectTime = Date.now() - start;
-  console.log(logLabel, `Profile data read out in ${collectTime}ms`);
-  analytics.trackUserTiming('profile', 'get-data', collectTime);
-  setTimeout(maybeUpload, uploadTimeout);
+  setTimeout(maybeUpload, uploadDelay);
   resetBadge();
 };
 
@@ -124,26 +127,26 @@ const resetBadge = () => {
 };
 
 const maybeUpload = async () => {
-  if (isUploading || !beacons.length) {
+  if (isUploading || !uploadQueue.length) {
     return;
   }
   isUploading = true;
   try {
     analytics.trackEvent('profile', 'upload');
     const start = Date.now();
-    await uploadNext(beacons[0]);
-    beacons.splice(0, 1);
+    await uploadNext(uploadQueue[0]);
+    uploadQueue.splice(0, 1);
     analytics.trackUserTiming('profile', 'upload', Date.now() - start);
   } catch (err) {
     analytics.trackException('Upload failed');
     console.error(logLabel, `Upload failed: ${err}`);
   }
   isUploading = false;
-  setTimeout(maybeUpload, uploadTimeout);
+  setTimeout(maybeUpload, uploadDelay);
 };
 
 const uploadNext = async beacon => {
-  const signed = await (await fetch(`${apiEndpoint}/beacons/${uid}`, {
+  const signed = await (await fetch(`${apiEndpoint}/api/collect/${uid}`, {
     method: 'post',
   })).json();
   const input = JSON.stringify(beacon);
@@ -206,10 +209,10 @@ const disable = () => {
   // Reset sampling interval
   lastSample = 0;
   // Flush collected profiles
-  beacons.length = 0;
+  uploadQueue.length = 0;
   const body = ['When you are ready to continue foxfooding, click the button.'];
-  if (beacons.length > 2 || (beacons.length === 1 && !isUploading)) {
-    body.push(`${beacons.length} pending upload(s) got discarded.`);
+  if (uploadQueue.length > 2 || (uploadQueue.length === 1 && !isUploading)) {
+    body.push(`${uploadQueue.length} pending upload(s) got discarded.`);
   }
   notifications.create(noteId, {
     type: 'basic',
