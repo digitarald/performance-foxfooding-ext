@@ -81,7 +81,6 @@ const startProfile = async () => {
     isRunning = true;
   }
   console.log(logLabel, 'Sampling started');
-  performance.mark('profiler.start');
 };
 
 const collectProfile = async () => {
@@ -92,8 +91,6 @@ const collectProfile = async () => {
   lastSample = Date.now();
   clearTimeout(sampleId);
   sampleId = 0;
-  performance.mark('profiler.collect');
-  performance.measure('profiler', 'profiler.start', 'profiler.collect');
   analytics.trackEvent('profile', 'collect');
   analytics.trackUserTiming('profile', 'sampling', Date.now() - sampleStart);
   sampleStart = 0;
@@ -103,12 +100,14 @@ const collectProfile = async () => {
   const getDataTimeout = setTimeout(() => {
     analytics.trackEvent('profile', 'get-data-timeout');
     resetBadge();
-  }, 15000);
+  }, 30000);
   try {
     await geckoProfiler.pause().catch(err => console.error(logLabel, err));
-    beacons.push(await geckoProfiler.getProfile());
+    const data = await geckoProfiler.getProfile();
+    beacons.push(data);
     await browser.geckoProfiler.resume().catch(err => console.error(logLabel, err));
-  } catch (e) {
+  } catch (err) {
+    console.error(logLabel, err);
     analytics.trackException('getData failed');
   }
   clearTimeout(getDataTimeout);
@@ -125,21 +124,19 @@ const resetBadge = () => {
 };
 
 const maybeUpload = async () => {
-  if (isUploading) {
+  if (isUploading || !beacons.length) {
     return;
   }
   isUploading = true;
-  if (beacons.length) {
-    try {
-      analytics.trackEvent('profile', 'upload');
-      const start = Date.now();
-      await uploadNext(beacons[0]);
-      beacons.splice(0, 1);
-      analytics.trackUserTiming('profile', 'upload', Date.now() - start);
-    } catch (err) {
-      analytics.trackException('Upload failed');
-      console.error(logLabel, `Upload failed: ${err}`);
-    }
+  try {
+    analytics.trackEvent('profile', 'upload');
+    const start = Date.now();
+    await uploadNext(beacons[0]);
+    beacons.splice(0, 1);
+    analytics.trackUserTiming('profile', 'upload', Date.now() - start);
+  } catch (err) {
+    analytics.trackException('Upload failed');
+    console.error(logLabel, `Upload failed: ${err}`);
   }
   isUploading = false;
   setTimeout(maybeUpload, uploadTimeout);

@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Performance Foxfooding",
   "description": "Crowd-sourced Firefox Profiling WebExtension.",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "permissions": [
     "geckoProfiler",
     "storage",
