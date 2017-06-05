@@ -21,10 +21,9 @@ const profileSettings = {
   features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
-const clientRank = 0 + (runtime.os === 'win') + (runtime.os === 'win' && runtime.os === 'x86-64');
 const intervalRanks = [30, 10, 5];
-
-const sampleInterval = intervalRanks[clientRank] * 60 * 1000;
+let clientRank = 0;
+let sampleInterval = intervalRanks[clientRank] * 60 * 1000;
 const sampleLength = 60 * 1000;
 const uploadDelay = 15000;
 
@@ -40,6 +39,14 @@ const uploadQueue = [];
 
 // get uid for user
 const bootstrap = async () => {
+  // set sampling intervals by platform importance
+  const osInfo = await runtime.getPlatformInfo();
+  const isWin = osInfo.os === 'win';
+  const is64 = osInfo.arch === 'x86-64';
+  clientRank = 0 + isWin + (isWin && is64);
+  sampleInterval = intervalRanks[clientRank] * 60 * 1000;
+
+  // configure analytics with cid from storage
   await analytics.configure(analyticsId, storage.local);
   browserAction.disable();
   const items = await storage.local.get('uid');
@@ -196,9 +203,9 @@ const enable = () => {
   analytics.trackEvent('status', 'enable');
   notifications.create(noteId, {
     type: 'basic',
-    iconUrl: extension.getURL('icons/icon-default.svg'),
-    title: 'Foxfooding enabled',
-    message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength / 60000}min.`,
+    iconUrl: extension.getURL('icons/icon-running.svg'),
+    title: 'You Are 🦊 Foxfooding 🍽!',
+    message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength / 60000}min and uploaded for analysis.`,
   });
   browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setTitle({ title: 'Click to disable foxfooding' });
@@ -226,7 +233,7 @@ const disable = () => {
   notifications.create(noteId, {
     type: 'basic',
     iconUrl: extension.getURL('icons/icon-disabled.svg'),
-    title: 'Foxfooding paused',
+    title: 'Foxfooding Paused',
     message: body.join(' '),
   });
   browserAction.setTitle({ title: 'Foxfooding disabled. Click to enable.' });
