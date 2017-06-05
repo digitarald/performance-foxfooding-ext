@@ -21,7 +21,10 @@ const profileSettings = {
   features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
-const sampleInterval = 15 * 60 * 1000;
+const clientRank = 0 + (runtime.os === 'win') + (runtime.os === 'win' && runtime.os === 'x86-64');
+const intervalRanks = [30, 10, 5];
+
+const sampleInterval = intervalRanks[clientRank] * 60 * 1000;
 const sampleLength = 60 * 1000;
 const uploadDelay = 15000;
 
@@ -100,11 +103,11 @@ const collectProfile = async () => {
       .pause()
       .catch(err => console.error(logLabel, 'Failed to pause profiler', err));
     const data = await geckoProfiler.getProfile();
-    const { samples } = data.threads.find(
-      thread => thread.name === 'GeckoMain' && thread.processType === 'default'
-    );
-    const profileDelta = samples.data.slice(-1)[0][1] - samples.data[0][1];
-    console.log(logLabel, 'Profiler length', profileDelta);
+    // const { samples } = data.threads.find(
+    //   thread => thread.name === 'GeckoMain' && thread.processType === 'default'
+    // );
+    // const profileDelta = samples.data.slice(-1)[0][1] - samples.data[0][1];
+    // console.log(logLabel, 'Profiler length', profileDelta);
     uploadQueue.push(data);
     await browser.geckoProfiler
       .resume()
@@ -135,7 +138,10 @@ const maybeUpload = async () => {
     analytics.trackEvent('profile', 'upload');
     const start = Date.now();
     await uploadNext(uploadQueue[0]);
-    uploadQueue.splice(0, 1);
+    // Check length here/ Upload could have been cancelled and queue flushed
+    if (uploadQueue.length) {
+      uploadQueue.splice(0, 1);
+    }
     analytics.trackUserTiming('profile', 'upload', Date.now() - start);
   } catch (err) {
     analytics.trackException('Upload failed');
@@ -161,6 +167,9 @@ const uploadNext = async beacon => {
   console.timeEnd(`${logLabel} gzip`);
   const blob = new Blob([compressed], { type: 'application/json' });
   console.time(`${logLabel} upload`);
+  if (!isEnabled) {
+    return;
+  }
   const upload = await fetch(signed.url, {
     method: 'put',
     body: blob,
@@ -208,12 +217,12 @@ const disable = () => {
   }
   // Reset sampling interval
   lastSample = 0;
-  // Flush collected profiles
-  uploadQueue.length = 0;
-  const body = ['When you are ready to continue foxfooding, click the button.'];
+  const body = ['Just click the button when you are ready to continue foxfooding.'];
   if (uploadQueue.length > 2 || (uploadQueue.length === 1 && !isUploading)) {
     body.push(`${uploadQueue.length} pending upload(s) got discarded.`);
   }
+  // Flush collected profiles
+  uploadQueue.length = 0;
   notifications.create(noteId, {
     type: 'basic',
     iconUrl: extension.getURL('icons/icon-disabled.svg'),

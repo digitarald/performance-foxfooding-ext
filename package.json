@@ -3,7 +3,7 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "config": {
     "firefox": "nightly"
   },
@@ -20,7 +20,7 @@
     "copy-webpack-plugin": "^4.0.1",
     "eslint": "^3.19.0",
     "web-ext": "^1.8.1",
-    "webpack": "^2.5.1"
+    "webpack": "^2.6.1"
   },
   "dependencies": {
     "pako": "^1.0.5",

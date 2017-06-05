@@ -1,4 +1,4 @@
-const shortid = require('shortid');
+const { generate } = require('shortid');
 
 module.exports = {
   tid: '',
@@ -11,7 +11,7 @@ module.exports = {
     this.tid = tid;
     let { uid } = await storage.get('uid');
     if (!uid) {
-      uid = shortid.generate();
+      uid = generate();
       storage.set({ uid: uid });
     }
     this.uid = uid;
