@@ -15,7 +15,7 @@ const logLabel = '[foxfooding]';
 const apiEndpoint = 'https://performance-foxfooding.herokuapp.com';
 const analyticsId = 'UA-49796218-57';
 const profileSettings = {
-  bufferSize: Math.pow(10, 7),
+  bufferSize: Math.pow(10, 6) * 3, // x2 is 60sec on my machine, x3 for stack variations
   interval: 2,
   features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
@@ -116,14 +116,22 @@ const collectProfile = async () => {
       };
       deflateWorker.onerror = reject;
     });
-    deflateWorker.postMessage(JSON.stringify(await geckoProfiler.getProfile()));
+    const profile = await geckoProfiler.getProfile();
+    const samples = profile.threads.find(
+      thread => thread.name === 'GeckoMain' && thread.processType === 'default'
+    ).samples.data;
+    const duration = samples.slice(-1)[0][1] - samples[0][1];
+    deflateWorker.postMessage(JSON.stringify(profile));
     await didCompress;
     deflateWorker.terminate();
     await browser.geckoProfiler
       .stop()
       .catch(err => console.error(logLabel, 'Failed to stop profiler', err));
     const delta = Date.now() - start;
-    console.log(logLabel, `Profile data captured in ${delta}ms`);
+    console.log(
+      logLabel,
+      `Profile data (${(duration / 1000).toFixed(2)}s) captured in ${(delta / 1000).toFixed(2)}s`
+    );
     analytics.trackUserTiming('profile', 'get-data', delta);
   } catch (err) {
     console.error(logLabel, 'Failed to capture profile', err);
