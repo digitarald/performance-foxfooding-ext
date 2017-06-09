@@ -5,17 +5,16 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
   plugins: [
     new EnvironmentPlugin({
-      NODE_ENV: 'development'
+      NODE_ENV: 'development',
     }),
-    new CopyWebpackPlugin([
-      { context: 'static', from: '**/*' }
-    ])
+    new CopyWebpackPlugin([{ context: 'static', from: '**/*' }]),
   ],
   entry: {
-    background: join(__dirname, 'src', 'background.js')
+    background: join(__dirname, 'src', 'background.js'),
+    deflate: join(__dirname, 'src', 'deflate.js'),
   },
-  output : {
+  output: {
     path: join(__dirname, 'dist'),
-    filename: '[name].js'
-  }
+    filename: '[name].js',
+  },
 };

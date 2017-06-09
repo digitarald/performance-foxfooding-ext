@@ -1,5 +1,4 @@
 const analytics = require('./analytics.js');
-const pako = require('pako/dist/pako_deflate.js');
 const {
   runtime,
   geckoProfiler,
@@ -63,10 +62,10 @@ const bootstrap = async () => {
   }
   console.log(logLabel, `Foxfooding as ${uid}`);
   browserAction.enable();
-  resetBadge();
+  await resetBadge();
   const { autoStart } = await storage.local.get('autoStart');
   if (autoStart !== false) {
-    enable();
+    await enable();
   }
 };
 
@@ -80,7 +79,7 @@ const startProfile = async () => {
   analytics.trackEvent('profile', 'start');
   sampleId = setTimeout(collectProfile, sampleLength);
   sampleStart = Date.now();
-  browserAction.setIcon({ path: './icons/icon-running.svg' });
+  await browserAction.setIcon({ path: './icons/icon-running.svg' });
   await geckoProfiler
     .start(profileSettings)
     .catch(err => console.error(logLabel, 'Failed to start profiler', err));
@@ -98,7 +97,7 @@ const collectProfile = async () => {
   analytics.trackEvent('profile', 'collect');
   analytics.trackUserTiming('profile', 'sampling', Date.now() - sampleStart);
   sampleStart = 0;
-  browserAction.setIcon({ path: './icons/icon-default.svg' });
+  await browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setBadgeText({ text: 'Rec' });
   const getDataTimeout = setTimeout(() => {
     analytics.trackEvent('profile', 'get-data-timeout');
@@ -109,26 +108,30 @@ const collectProfile = async () => {
     await geckoProfiler
       .pause()
       .catch(err => console.error(logLabel, 'Failed to pause profiler', err));
-    const data = await geckoProfiler.getProfile();
-    // const { samples } = data.threads.find(
-    //   thread => thread.name === 'GeckoMain' && thread.processType === 'default'
-    // );
-    // const profileDelta = samples.data.slice(-1)[0][1] - samples.data[0][1];
-    // console.log(logLabel, 'Profiler length', profileDelta);
-    uploadQueue.push(data);
+    const deflateWorker = new Worker('./deflate.js');
+    const didCompress = new Promise((resolve, reject) => {
+      deflateWorker.onmessage = evt => {
+        uploadQueue.push(new Uint8Array(evt.data.compressed));
+        resolve();
+      };
+      deflateWorker.onerror = reject;
+    });
+    deflateWorker.postMessage(JSON.stringify(await geckoProfiler.getProfile()));
+    await didCompress;
+    deflateWorker.terminate();
     await browser.geckoProfiler
-      .resume()
-      .catch(err => console.error(logLabel, 'Failed to resume profiler', err));
+      .stop()
+      .catch(err => console.error(logLabel, 'Failed to stop profiler', err));
     const delta = Date.now() - start;
-    console.log(logLabel, `Profile data read out in ${delta}ms`);
+    console.log(logLabel, `Profile data captured in ${delta}ms`);
     analytics.trackUserTiming('profile', 'get-data', delta);
   } catch (err) {
-    console.error(logLabel, 'Failed to get profile', err);
+    console.error(logLabel, 'Failed to capture profile', err);
     analytics.trackException('getData failed');
   }
   clearTimeout(getDataTimeout);
   setTimeout(maybeUpload, uploadDelay);
-  resetBadge();
+  await resetBadge();
 };
 
 const resetBadge = () => {
@@ -162,21 +165,12 @@ const uploadNext = async beacon => {
   const signed = await (await fetch(`${apiEndpoint}/api/collect/${uid}`, {
     method: 'post',
   })).json();
-  const input = JSON.stringify(beacon);
-  const inputSize = input.length;
-  console.time(`${logLabel} gzip`);
-  const compressed = pako.gzip(input);
-  const compressedSize = compressed.length;
-  console.log(
-    logLabel,
-    `Compressed ${signed.key} by ${Math.round(inputSize / compressedSize)}x: ${Math.round(compressedSize / 1024)}kb`
-  );
-  console.timeEnd(`${logLabel} gzip`);
-  const blob = new Blob([compressed], { type: 'application/json' });
-  console.time(`${logLabel} upload`);
+  const blob = new Blob([beacon], { type: 'application/json' });
   if (!isEnabled) {
     return;
   }
+  const label = `${logLabel} uploaded ${signed.key}, ${(beacon.byteLength / 1024 / 1024).toFixed(2)} Mb`;
+  console.time(label);
   const upload = await fetch(signed.url, {
     method: 'put',
     body: blob,
@@ -185,16 +179,15 @@ const uploadNext = async beacon => {
       'Content-Encoding': 'gzip',
     },
   });
-  console.timeEnd(`${logLabel} upload`);
+  console.timeEnd(label);
   if (!upload.ok) {
     throw new Error((await upload.text()));
   }
-  console.log(logLabel, `Uploaded ${signed.key}`);
 };
 
 const noteId = 'status-notification';
 
-const enable = () => {
+const enable = async () => {
   if (isEnabled) {
     return;
   }
@@ -207,11 +200,11 @@ const enable = () => {
     title: 'You Are 🦊 Foxfooding 🍽!',
     message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength / 60000}min and uploaded for analysis.`,
   });
-  browserAction.setIcon({ path: './icons/icon-default.svg' });
+  await browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setTitle({ title: 'Click to disable foxfooding' });
 };
 
-const disable = () => {
+const disable = async () => {
   if (!isEnabled) {
     return;
   }
@@ -228,6 +221,7 @@ const disable = () => {
   if (uploadQueue.length > 2 || (uploadQueue.length === 1 && !isUploading)) {
     body.push(`${uploadQueue.length} pending upload(s) got discarded.`);
   }
+  analytics.trackEvent('status', 'disable');
   // Flush collected profiles
   uploadQueue.length = 0;
   notifications.create(noteId, {
@@ -237,8 +231,7 @@ const disable = () => {
     message: body.join(' '),
   });
   browserAction.setTitle({ title: 'Foxfooding disabled. Click to enable.' });
-  browserAction.setIcon({ path: './icons/icon-disabled.svg' });
-  analytics.trackEvent('status', 'disable');
+  await browserAction.setIcon({ path: './icons/icon-disabled.svg' });
 };
 
 browserAction.onClicked.addListener(() => {
