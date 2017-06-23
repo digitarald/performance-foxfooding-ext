@@ -17,7 +17,7 @@ const analyticsId = 'UA-49796218-57';
 const profileSettings = {
   bufferSize: Math.pow(10, 6) * 3, // x2 is 60sec on my machine, x3 for stack variations
   interval: 2,
-  features: ['js', 'stackwalk', 'leaf', 'threads'],
+  features: ['stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
 const intervalRanks = [30, 10, 5];
@@ -177,7 +177,9 @@ const uploadNext = async beacon => {
   if (!isEnabled) {
     return;
   }
-  const label = `${logLabel} uploaded ${signed.key}, ${(beacon.byteLength / 1024 / 1024).toFixed(2)} Mb`;
+  const label = `${logLabel} uploaded ${signed.key}, ${(beacon.byteLength / 1024 / 1024).toFixed(
+    2
+  )} Mb`;
   console.time(label);
   const upload = await fetch(signed.url, {
     method: 'put',
@@ -189,7 +191,7 @@ const uploadNext = async beacon => {
   });
   console.timeEnd(label);
   if (!upload.ok) {
-    throw new Error((await upload.text()));
+    throw new Error(await upload.text());
   }
 };
 
@@ -206,7 +208,8 @@ const enable = async () => {
     type: 'basic',
     iconUrl: extension.getURL('icons/icon-running.svg'),
     title: 'You Are 🦊 Foxfooding 🍽!',
-    message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength / 60000}min and uploaded for analysis.`,
+    message: `Every ${sampleInterval / 60000}min performance will be recorded for ${sampleLength /
+      60000}min and uploaded for analysis.`,
   });
   await browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setTitle({ title: 'Click to disable foxfooding' });
