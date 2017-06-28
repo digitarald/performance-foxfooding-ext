@@ -17,7 +17,7 @@ const analyticsId = 'UA-49796218-57';
 const profileSettings = {
   bufferSize: Math.pow(10, 6) * 3, // x2 is 60sec on my machine, x3 for stack variations
   interval: 2,
-  features: ['stackwalk', 'leaf', 'threads'],
+  features: ['js', 'stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
 const intervalRanks = [30, 10, 5];
