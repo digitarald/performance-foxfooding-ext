@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Performance Foxfooding",
   "description": "Crowd-sourced Firefox Profiling WebExtension.",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "permissions": [
     "geckoProfiler",
     "storage",
@@ -10,7 +10,7 @@
     "tabs",
     "https://performance-foxfooding.herokuapp.com/",
     "https://quantum-flow.s3.amazonaws.com/",
-    "https://www.google-analytics.com/"
+    "<all_urls>"
   ],
   "background": {
     "scripts": ["background.js"]
@@ -21,7 +21,7 @@
       "strict_min_version": "55.0a1",
       "update_url": "https://raw.githubusercontent.com/digitarald/performance-foxfooding-ext/master/updates.json"
     }
-},
+  },
   "browser_action": {
     "default_icon": "icons/icon-disabled.svg",
     "default_title": "Ready. Set. Foxfood!",

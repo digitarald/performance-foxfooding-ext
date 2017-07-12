@@ -1,4 +1,3 @@
-const analytics = require('./analytics.js');
 const {
   runtime,
   geckoProfiler,
@@ -13,7 +12,6 @@ const {
 // config
 const logLabel = '[foxfooding]';
 const apiEndpoint = 'https://performance-foxfooding.herokuapp.com';
-const analyticsId = 'UA-49796218-57';
 const profileSettings = {
   bufferSize: Math.pow(10, 6) * 3, // x2 is 60sec on my machine, x3 for stack variations
   interval: 2,
@@ -45,26 +43,26 @@ const bootstrap = async () => {
   clientRank = 0 + isWin + (isWin && is64);
   sampleInterval = intervalRanks[clientRank] * 60 * 1000;
 
-  // configure analytics with cid from storage
-  await analytics.configure(analyticsId, storage.local);
   browserAction.disable();
   const items = await storage.local.get('uid');
   if (items.uid) {
     uid = items.uid;
-    analytics.trackEvent('bootstrap', 'storage');
   } else {
     const resp = await (await fetch(`${apiEndpoint}/api/collect/`, {
       method: 'post',
     })).json();
     uid = resp.uid;
     await storage.local.set({ uid: uid });
-    analytics.trackEvent('bootstrap', 'register');
   }
-  console.log(logLabel, `Foxfooding as ${uid}`);
+  console.log(
+    logLabel,
+    `Welcome Foxfooder ${uid}!`,
+    `(Share with caution! This unique identifier links your browser with the anonymously uploaded profiles.)`
+  );
   browserAction.enable();
   await resetBadge();
   const { autoStart } = await storage.local.get('autoStart');
-  if (autoStart !== false) {
+  if (!Number.isInteger(autoStart) || autoStart <= Date.now()) {
     await enable();
   }
 };
@@ -76,7 +74,6 @@ const startProfile = async () => {
     return;
   }
   canRecord = false;
-  analytics.trackEvent('profile', 'start');
   sampleId = setTimeout(collectProfile, sampleLength);
   sampleStart = Date.now();
   await browserAction.setIcon({ path: './icons/icon-running.svg' });
@@ -94,17 +91,13 @@ const collectProfile = async () => {
   lastSample = Date.now();
   clearTimeout(sampleId);
   sampleId = 0;
-  analytics.trackEvent('profile', 'collect');
-  analytics.trackUserTiming('profile', 'sampling', Date.now() - sampleStart);
   sampleStart = 0;
   await browserAction.setIcon({ path: './icons/icon-default.svg' });
   browserAction.setBadgeText({ text: 'Rec' });
   const getDataTimeout = setTimeout(() => {
-    analytics.trackEvent('profile', 'get-data-timeout');
     resetBadge();
   }, 30000);
   try {
-    const start = Date.now();
     await geckoProfiler
       .pause()
       .catch(err => console.error(logLabel, 'Failed to pause profiler', err));
@@ -116,30 +109,45 @@ const collectProfile = async () => {
       };
       deflateWorker.onerror = reject;
     });
+
+    const capturing = `${logLabel} Capturing profile`;
+    console.time(capturing);
     const profile = await geckoProfiler.getProfile();
+    console.timeEnd(capturing);
     const samples = profile.threads.find(
       thread => thread.name === 'GeckoMain' && thread.processType === 'default'
     ).samples.data;
     const duration = samples.slice(-1)[0][1] - samples[0][1];
+    console.log(logLabel, `Captured ${(duration / 1000).toFixed(2)}s`);
+
+    const processing = `${logLabel} Processing profile`;
+    console.time(processing);
     deflateWorker.postMessage(JSON.stringify(profile));
     await didCompress;
     deflateWorker.terminate();
     await browser.geckoProfiler
       .stop()
       .catch(err => console.error(logLabel, 'Failed to stop profiler', err));
-    const delta = Date.now() - start;
-    console.log(
-      logLabel,
-      `Profile data (${(duration / 1000).toFixed(2)}s) captured in ${(delta / 1000).toFixed(2)}s`
-    );
-    analytics.trackUserTiming('profile', 'get-data', delta);
+    console.timeEnd(processing);
   } catch (err) {
     console.error(logLabel, 'Failed to capture profile', err);
-    analytics.trackException('getData failed');
   }
   clearTimeout(getDataTimeout);
   setTimeout(maybeUpload, uploadDelay);
   await resetBadge();
+};
+
+const dropMarker = (tab, type) => {
+  console.log(logLabel, tab, type);
+  tabs
+    .executeScript(tab, {
+      code: `performance.mark("profiler-tab-${type} " + location.origin);`,
+      matchAboutBlank: true,
+      runAt: 'document_start',
+    })
+    .catch(err => {
+      console.error(logLabel, 'Could not drop label', err);
+    });
 };
 
 const resetBadge = () => {
@@ -153,16 +161,13 @@ const maybeUpload = async () => {
   }
   isUploading = true;
   try {
-    analytics.trackEvent('profile', 'upload');
     const start = Date.now();
     await uploadNext(uploadQueue[0]);
     // Check length here/ Upload could have been cancelled and queue flushed
     if (uploadQueue.length) {
       uploadQueue.splice(0, 1);
     }
-    analytics.trackUserTiming('profile', 'upload', Date.now() - start);
   } catch (err) {
-    analytics.trackException('Upload failed');
     console.error(logLabel, `Upload failed: ${err}`);
   }
   isUploading = false;
@@ -202,8 +207,7 @@ const enable = async () => {
     return;
   }
   isEnabled = true;
-  storage.local.set({ autoStart: true });
-  analytics.trackEvent('status', 'enable');
+  storage.local.set({ autoStart: 0 });
   notifications.create(noteId, {
     type: 'basic',
     iconUrl: extension.getURL('icons/icon-running.svg'),
@@ -220,7 +224,7 @@ const disable = async () => {
     return;
   }
   isEnabled = false;
-  storage.local.set({ autoStart: false });
+  storage.local.set({ autoStart: Date.now() + 3600000 });
   geckoProfiler.stop();
   if (sampleId) {
     sampleId = 0;
@@ -228,11 +232,10 @@ const disable = async () => {
   }
   // Reset sampling interval
   lastSample = 0;
-  const body = ['Just click the button when you are ready to continue foxfooding.'];
+  const body = ['Disabled status will be remembered between restarts for 1 hour.'];
   if (uploadQueue.length > 2 || (uploadQueue.length === 1 && !isUploading)) {
     body.push(`${uploadQueue.length} pending upload(s) got discarded.`);
   }
-  analytics.trackEvent('status', 'disable');
   // Flush collected profiles
   uploadQueue.length = 0;
   notifications.create(noteId, {
@@ -241,7 +244,7 @@ const disable = async () => {
     title: 'Foxfooding Paused',
     message: body.join(' '),
   });
-  browserAction.setTitle({ title: 'Foxfooding disabled. Click to enable.' });
+  browserAction.setTitle({ title: 'Foxfooding disabled. Click to re-enable.' });
   await browserAction.setIcon({ path: './icons/icon-disabled.svg' });
 };
 
@@ -264,11 +267,12 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
   if (activeTab && activeTab.incognito) {
     disable();
   } else {
-    startProfile();
+    await startProfile();
+    dropMarker(tabId, 'activate');
   }
 });
 
-browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (
     !tab.highlighted ||
     !tab.url.startsWith('http') ||
@@ -276,5 +280,6 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   ) {
     return;
   }
-  startProfile();
+  await startProfile();
+  dropMarker(tabId, 'load');
 });
