@@ -138,15 +138,22 @@ const collectProfile = async () => {
 };
 
 const dropMarker = (tab, type) => {
-  console.log(logLabel, tab, type);
+  if (!sampleId) {
+    return;
+  }
   tabs
     .executeScript(tab, {
-      code: `performance.mark("profiler-tab-${type} " + location.origin);`,
-      matchAboutBlank: true,
+      code: `performance.mark("profiler-tab-${type} ${tab} " + location.origin) && null;`,
       runAt: 'document_start',
     })
-    .catch(err => {
-      console.error(logLabel, 'Could not drop label', err);
+    .catch(async err => {
+      // Happens for about: pages
+      if (err.message && /Missing host permission for the tab/.test(err.message)) {
+        const activeTab = await tabs.get(tab);
+        performance.mark('profiler-tab-${type} ${tab} ' + activeTab.url);
+      } else {
+        console.error(logLabel, 'Could not drop label', err);
+      }
     });
 };
 
@@ -182,9 +189,9 @@ const uploadNext = async beacon => {
   if (!isEnabled) {
     return;
   }
-  const label = `${logLabel} uploaded ${signed.key}, ${(beacon.byteLength / 1024 / 1024).toFixed(
-    2
-  )} Mb`;
+  const size = (beacon.byteLength / 1024 / 1024).toFixed(2);
+  console.log(logLabel, `Uploading ${size} Mb to ${signed.key}`);
+  const label = `${logLabel} Uploading`;
   console.time(label);
   const upload = await fetch(signed.url, {
     method: 'put',
