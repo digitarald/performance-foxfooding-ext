@@ -3,7 +3,7 @@
   "name": "Performance Foxfooding",
   "description": "Crowd-sourced Firefox Profiling WebExtension.",
   "homepage_url": "https://github.com/digitarald/performance-foxfooding-ext",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "permissions": [
     "geckoProfiler",
     "storage",

@@ -1,10 +1,9 @@
 const { join } = require('path');
-const { EnvironmentPlugin, optimize } = require('webpack');
+const { EnvironmentPlugin } = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   plugins: [
-    new optimize.ModuleConcatenationPlugin(),
     new EnvironmentPlugin({
       NODE_ENV: 'development',
     }),
