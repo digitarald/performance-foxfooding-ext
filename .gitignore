@@ -4,3 +4,4 @@ dist
 .env
 .web-extension-id
 web-ext-artifacts
+coverage

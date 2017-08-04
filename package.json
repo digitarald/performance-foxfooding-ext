@@ -3,7 +3,7 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "config": {
     "firefox": "nightly"
   },
@@ -14,7 +14,7 @@
     "sign": "npm run build && web-ext sign --source-dir=dist --api-key=$JWT_ISSUER --api-secret=$JWT_SECRET && mv web-ext-artifacts/*.xpi performance_foxfooding.xpi",
     "build": "npm run clean && NODE_ENV=production webpack",
     "clean": "rm -rf dist",
-    "lint": "eslint **/*.js"
+    "test": "eslint src test && jest --coverage"
   },
   "devDependencies": {
     "copy-webpack-plugin": "^4.0.1",
@@ -23,6 +23,9 @@
     "webpack": "^3.4.1"
   },
   "dependencies": {
+    "babel-jest": "^20.0.3",
+    "eslint-plugin-jest": "^20.0.3",
+    "jest": "^20.0.4",
     "pako": "^1.0.5",
     "shortid": "^2.2.8"
   }
