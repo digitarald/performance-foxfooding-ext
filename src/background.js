@@ -150,7 +150,7 @@ const dropMarker = (tab, type) => {
       // Happens for about: pages
       if (err.message && /Missing host permission for the tab/.test(err.message)) {
         const activeTab = await tabs.get(tab);
-        performance.mark('profiler-tab-${type} ${tab} ' + activeTab.url);
+        performance.mark(`profiler-tab-${type} ${tab} ${activeTab.url}`);
       } else {
         console.error(logLabel, 'Could not drop label', err);
       }
