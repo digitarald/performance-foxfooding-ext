@@ -688,6 +688,10 @@ camelcase@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-3.0.0.tgz#32fc4b9fcdaf845fcdf7e73bb97cac2261f0ab0a"
 
+canvas-renderer@~1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/canvas-renderer/-/canvas-renderer-1.0.0.tgz#be15680c25c6878944101ca06fd5538ea7179fd4"
+
 capture-stack-trace@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/capture-stack-trace/-/capture-stack-trace-1.0.0.tgz#4a6fa07399c26bba47f0b2496b4d0fb408c5550d"
@@ -2405,6 +2409,13 @@ istanbul-reports@^1.1.1:
   dependencies:
     handlebars "^4.0.3"
 
+jdenticon@^1.7.2:
+  version "1.7.2"
+  resolved "https://registry.yarnpkg.com/jdenticon/-/jdenticon-1.7.2.tgz#4472bd161f6ca94b0cbc96b798a7cb3099a73cc2"
+  dependencies:
+    canvas-renderer "~1.0.0"
+    requirejs "^2.3.3"
+
 jed@1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/jed/-/jed-1.1.1.tgz#7a549bbd9ffe1585b0cd0a191e203055bee574b4"
@@ -3791,6 +3802,10 @@ require-uncached@1.0.3, require-uncached@^1.0.2, require-uncached@^1.0.3:
   dependencies:
     caller-path "^0.1.0"
     resolve-from "^1.0.0"
+
+requirejs@^2.3.3:
+  version "2.3.4"
+  resolved "https://registry.yarnpkg.com/requirejs/-/requirejs-2.3.4.tgz#f45c48e66ebf0f163da57f6e0cf40fd57996ef50"
 
 resolve-from@^1.0.0:
   version "1.0.1"

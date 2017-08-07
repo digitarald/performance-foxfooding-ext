@@ -3,7 +3,7 @@
     "quantum-foxfooding@mozilla.com": {
       "updates": [
         {
-          "version": "0.0.26",
+          "version": "0.0.27",
           "update_link": "https://raw.githubusercontent.com/digitarald/performance-foxfooding-ext/master/performance_foxfooding.xpi"
         }
       ]

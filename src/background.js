@@ -18,7 +18,7 @@ const profileSettings = {
   features: ['js', 'stackwalk', 'leaf', 'threads'],
   threads: ['GeckoMain', 'Compositor'],
 };
-const intervalRanks = [30, 10, 5];
+const intervalRanks = [15, 10, 5];
 let clientRank = 0;
 let sampleInterval = intervalRanks[clientRank] * 60 * 1000;
 const sampleLength = 60 * 1000;

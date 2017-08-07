@@ -3,7 +3,7 @@
   "name": "performance-foxfooding-ext",
   "description": "Crowd-sourced Firefox Profiling.",
   "author": "Quantum Flow <quantum-flow@mozilla.org>",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "config": {
     "firefox": "nightly"
   },
@@ -25,6 +25,7 @@
   "dependencies": {
     "babel-jest": "^20.0.3",
     "eslint-plugin-jest": "^20.0.3",
+    "jdenticon": "^1.7.2",
     "jest": "^20.0.4",
     "pako": "^1.0.5",
     "shortid": "^2.2.8"
